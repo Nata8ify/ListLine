@@ -14,13 +14,14 @@ public class Main {
         listLine();
     }
 
-    private static final String VERSION = "1.1";
-    private static final String RELEASE_DATE = "13/04/2023";
+    private static final String VERSION = "1.2";
+    private static final String RELEASE_DATE = "08/05/2023";
     private static final String IGNORE_KEYWORD_SIGN = "#";
     private static final String CONFIG_SECTION_INPUT_DIRECTORY = "<<InputDirectory>>";
     private static final String CONFIG_SECTION_OUTPUT_DIRECTORY = "<<OutputDirectory>>";
     private static final String CONFIG_SECTION_IGNORED_INPUT_FILE_CONTAIN_WITH = "<<IgnoredInputFileContainWith>>";
     private static final String CONFIG_SECTION_KEYWORDS = "<<Keywords>>";
+    private static final String CONFIG_SECTION_ADHOC_KEYWORDS = "<<AdHocKeywords>>";
     private static final String CONFIG_SECTION_IGNORED_KEYWORDS = "<<IgnoredKeywords>>";
     private static final String CONFIG_SECTION_GROUPED_BY_THREAD_KEYWORDS = "<<GroupedByThreadKeywords>>";
 
@@ -42,17 +43,21 @@ public class Main {
         String inputDirectory = null;
         String outputDirectory = null;
         ArrayList<String> keywords = new ArrayList<>();
+        ArrayList<String> adHocKeywords = new ArrayList<>();
         ArrayList<String> ignoredInputFileContainWith = new ArrayList<>();
         ArrayList<String> ignoredKeywords = new ArrayList<>();
         ArrayList<String> groupedByThreadKeywords = new ArrayList<>();
 
         String currentConfigState = "";
-        List<String> propertyLines = Files.readAllLines(properties.toPath());
+        List<String> propertyLines = Files.readAllLines(properties.toPath())
+                .stream()
+                .filter(it -> !it.startsWith(IGNORE_KEYWORD_SIGN))
+                .collect(Collectors.toList());
         for (String line : propertyLines) {
             if (line.isBlank()) {
                 continue;
             }
-            if (List.of(CONFIG_SECTION_INPUT_DIRECTORY, CONFIG_SECTION_OUTPUT_DIRECTORY, CONFIG_SECTION_IGNORED_INPUT_FILE_CONTAIN_WITH, CONFIG_SECTION_KEYWORDS, CONFIG_SECTION_IGNORED_KEYWORDS, CONFIG_SECTION_GROUPED_BY_THREAD_KEYWORDS).contains(line.trim())) {
+            if (List.of(CONFIG_SECTION_INPUT_DIRECTORY, CONFIG_SECTION_OUTPUT_DIRECTORY, CONFIG_SECTION_IGNORED_INPUT_FILE_CONTAIN_WITH, CONFIG_SECTION_KEYWORDS, CONFIG_SECTION_ADHOC_KEYWORDS, CONFIG_SECTION_IGNORED_KEYWORDS, CONFIG_SECTION_GROUPED_BY_THREAD_KEYWORDS).contains(line.trim())) {
                 currentConfigState = line.trim();
             } else {
                 switch (currentConfigState) {
@@ -72,6 +77,10 @@ public class Main {
                         keywords.add(line);
                         System.out.println("Interested Keyword: " + line);
                         break;
+                    case CONFIG_SECTION_ADHOC_KEYWORDS:
+                        adHocKeywords.add(line);
+                        System.out.println("Interested Ad-Hoc Keyword (Main Keywords will be ignored): " + line);
+                        break;
                     case CONFIG_SECTION_IGNORED_KEYWORDS:
                         ignoredKeywords.add(line);
                         System.out.println("Ignored Keyword: " + line);
@@ -88,7 +97,7 @@ public class Main {
             return (in.replace("/", "_").replace("[", "").replace("]", "").replace(":", "").replace(".", "_").replace("=", "_").trim() + ".log");
         };
 
-        for (String keyword : keywords) {
+        for (String keyword : adHocKeywords.isEmpty() ? keywords : adHocKeywords) {
             File dir = new File(inputDirectory);
             String fileName = nameExtractor.apply(keyword);
             File out = new File(outputDirectory + fileName);
